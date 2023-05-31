@@ -58,6 +58,9 @@ namespace TelegramBot {
                 case "/help":
                     await HandleHelpCommandAsync(botClient, message);
                     break;
+                case "/mylessons":
+                    await HandleMyLessonsCommandAsync(botClient, message);
+                    break;
             }
         }
 
@@ -91,6 +94,24 @@ namespace TelegramBot {
             }
 
             await botClient.SendTextMessageAsync(message.Chat.Id, helpMessage.ToString());
+        }
+
+        private async Task HandleMyLessonsCommandAsync(ITelegramBotClient botClient, Message message) {
+            var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+            List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
+
+            if (lessons == null) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш розклад пустий.");
+                return;
+            }
+
+            var lessonsMessage = new StringBuilder();
+            lessonsMessage.AppendLine("Список занять:");
+            foreach (var lesson in lessons) {
+                lessonsMessage.AppendLine($"{lesson.Title} | {lesson.StartTime}-{lesson.EndTime}");
+            }
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString());
         }
     }
 }

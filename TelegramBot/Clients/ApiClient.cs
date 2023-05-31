@@ -22,9 +22,9 @@ namespace TelegramBot.Clients
 
         }
 
-        public async Task<User?> GetUserAsync(Guid id) {
+        public async Task<User?> GetUserAsync(Guid userId) {
             try {
-                var response = await _httpClient.GetAsync($"api/Users/{id}");
+                var response = await _httpClient.GetAsync($"api/Users/{userId}");
                 response.EnsureSuccessStatusCode();
 
                 var userJson = await response.Content.ReadAsStringAsync();
@@ -35,6 +35,27 @@ namespace TelegramBot.Clients
                 Console.WriteLine($"HTTP Request exception: {ex.Message}");
                 return null;
             } catch (JsonException ex) { 
+                Console.WriteLine($"Json Deserialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<User?> GetUserByTelegramIdAsync(long telegramId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/User?telegramId={telegramId}");
+                response.EnsureSuccessStatusCode();
+
+                var userJson = await response.Content.ReadAsStringAsync();
+                var user = JsonConvert.DeserializeObject<User>(userJson);
+
+                return user;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
                 Console.WriteLine($"Json Deserialize exception: {ex.Message}");
                 return null;
             } catch (Exception ex) {
@@ -62,6 +83,27 @@ namespace TelegramBot.Clients
                 return null;
             } catch (Exception ex) {
                 Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<List<Lesson>?> GetLessonsAsync(Guid userId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/Lesson?userId={userId}");
+                response.EnsureSuccessStatusCode();
+
+                var lessonsJson = await response.Content.ReadAsStringAsync();
+                var lessons = JsonConvert.DeserializeObject<List<Lesson>>(lessonsJson);
+
+                return lessons;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message} + {ex.InnerException}");
                 return null;
             }
         }

@@ -27,6 +27,17 @@ namespace StudyingTelegramBot.Controllers {
             return Ok(user);
         }
 
+        [HttpGet]
+        public async Task<ActionResult<User?>> GetUserByTelegramIdAsync([FromQuery] long telegramId) {
+            User? user = await _userService.GetUserByFieldAsync("TelegramId", telegramId);
+
+            if (user == null) {
+                return NotFound();
+            }
+
+            return user;
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateUserAsync(User user) {
             bool userExists = await _userService.GetUserByFieldAsync("TelegramId", user.TelegramId) != null;

@@ -16,7 +16,7 @@ namespace StudyingTelegramBot.Controllers {
 
         [HttpGet]
         [Route("{id}")]
-        public async Task<ActionResult<Lesson>> GetLessonById(Guid id) {
+        public async Task<ActionResult<Lesson?>> GetLessonById(Guid id) {
             var lesson = await _lessonService.GetLesson(id);
 
             if (lesson == null) {
@@ -24,6 +24,17 @@ namespace StudyingTelegramBot.Controllers {
             }
 
             return Ok(lesson);
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<Lesson?>> GetLessonByUserId([FromQuery] Guid userId) {
+            var lessons = await _lessonService.GetLessonsByUserId(userId);
+
+            if (lessons == null) {
+                return NotFound();
+            }
+
+            return Ok(lessons);
         }
 
         [HttpPost]

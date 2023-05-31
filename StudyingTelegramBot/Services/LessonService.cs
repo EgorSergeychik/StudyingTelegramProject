@@ -64,6 +64,37 @@ namespace StudyingTelegramBot.Services {
             return lesson;
         }
 
+        public async Task<List<Lesson>?> GetLessonsByUserId(Guid userId) {
+            var query = $"SELECT * FROM \"Lessons\" WHERE \"UserId\" = @UserId";
+
+            NpgsqlCommand command = new NpgsqlCommand(query, _connection);
+            command.Parameters.AddWithValue("UserId", userId);
+
+            await _connection.OpenAsync();
+
+            NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+            List<Lesson> lessons = new List<Lesson>();
+            while (await reader.ReadAsync()) {
+                Lesson lesson = new Lesson {
+                    Id = reader.GetGuid(0),
+                    UserId = reader.GetGuid(1),
+                    Title = reader.GetString(2),
+                    StartTime = reader.GetDateTime(3),
+                    EndTime = reader.GetDateTime(4),
+                };
+                lessons.Add(lesson);
+            }
+
+            await reader.CloseAsync();
+            await _connection.CloseAsync();
+
+            if (lessons.Count < 1)
+                return null;
+
+            return lessons;
+
+        }
+
         public async Task CreateLesson(Lesson lesson) {
             var query = "INSERT INTO \"Lessons\" (\"Id\", \"UserId\", \"Title\", \"StartTime\", \"EndTime\")" +
                 "VALUES (@Id, @UserId, @Title, @StartTime, @EndTime)";
