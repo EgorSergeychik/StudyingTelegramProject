@@ -108,7 +108,7 @@ namespace TelegramBot {
             var lessonsMessage = new StringBuilder();
             lessonsMessage.AppendLine("Список занять:");
             foreach (var lesson in lessons) {
-                lessonsMessage.AppendLine($"{lesson.Title} | {lesson.StartTime}-{lesson.EndTime}");
+                lessonsMessage.AppendLine($"{lesson.Title} | {lesson.StartTime.TimeOfDay}-{lesson.EndTime.TimeOfDay}");
             }
 
             await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString());

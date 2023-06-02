@@ -14,7 +14,7 @@ namespace StudyingTelegramBot.Services {
             _connection = new NpgsqlConnection(connectionString);
         }
 
-        public async Task<Lesson?> GetLesson(Guid id) {
+        public async Task<Lesson?> GetLessonByIdAsync(Guid id) {
             var query = "SELECT * FROM \"Lessons\" WHERE \"Id\" = @Id";
 
             NpgsqlCommand command = new NpgsqlCommand(query, _connection);
@@ -31,6 +31,7 @@ namespace StudyingTelegramBot.Services {
                     Title = reader.GetString(2),
                     StartTime = reader.GetDateTime(3),
                     EndTime = reader.GetDateTime(4),
+                    DayOfWeek = Enum.Parse<DayOfWeek>(reader.GetString(5))
                 };
             }
 
@@ -39,7 +40,7 @@ namespace StudyingTelegramBot.Services {
             return lesson;
         }
 
-        public async Task<Lesson?> GetLessonByField(string fieldName, object value) {
+        public async Task<Lesson?> GetLessonByFieldAsync(string fieldName, object value) {
             var query = $"SELECT * FROM \"Lessons\" WHERE \"{fieldName}\" = @Value";
 
             NpgsqlCommand command = new NpgsqlCommand(query, _connection);
@@ -56,7 +57,8 @@ namespace StudyingTelegramBot.Services {
                     Title = reader.GetString(2),
                     StartTime = reader.GetDateTime(3),
                     EndTime = reader.GetDateTime(4),
-                };
+                    DayOfWeek = Enum.Parse<DayOfWeek>(reader.GetString(5))
+                  };
             }
 
             await reader.CloseAsync();
@@ -64,7 +66,7 @@ namespace StudyingTelegramBot.Services {
             return lesson;
         }
 
-        public async Task<List<Lesson>?> GetLessonsByUserId(Guid userId) {
+        public async Task<List<Lesson>?> GetLessonsByUserIdAsync(Guid userId) {
             var query = $"SELECT * FROM \"Lessons\" WHERE \"UserId\" = @UserId";
 
             NpgsqlCommand command = new NpgsqlCommand(query, _connection);
@@ -81,6 +83,7 @@ namespace StudyingTelegramBot.Services {
                     Title = reader.GetString(2),
                     StartTime = reader.GetDateTime(3),
                     EndTime = reader.GetDateTime(4),
+                    DayOfWeek = Enum.Parse<DayOfWeek>(reader.GetString(5))
                 };
                 lessons.Add(lesson);
             }
@@ -95,9 +98,9 @@ namespace StudyingTelegramBot.Services {
 
         }
 
-        public async Task CreateLesson(Lesson lesson) {
-            var query = "INSERT INTO \"Lessons\" (\"Id\", \"UserId\", \"Title\", \"StartTime\", \"EndTime\")" +
-                "VALUES (@Id, @UserId, @Title, @StartTime, @EndTime)";
+        public async Task CreateLessonAsync(Lesson lesson) {
+            var query = "INSERT INTO \"Lessons\" (\"Id\", \"UserId\", \"Title\", \"StartTime\", \"EndTime\", \"DayOfWeek\")" +
+                "VALUES (@Id, @UserId, @Title, @StartTime, @EndTime, @DayOfWeek)";
 
             NpgsqlCommand command = new NpgsqlCommand(query, _connection);
             command.Parameters.AddWithValue("Id", lesson.Id);
@@ -105,13 +108,14 @@ namespace StudyingTelegramBot.Services {
             command.Parameters.AddWithValue("Title", lesson.Title);
             command.Parameters.AddWithValue("StartTime", lesson.StartTime);
             command.Parameters.AddWithValue("EndTime", lesson.EndTime);
+            command.Parameters.AddWithValue("DayOfWeek", Enum.GetName(typeof(DayOfWeek), lesson.DayOfWeek));
 
             await _connection.OpenAsync();
             await command.ExecuteNonQueryAsync();
             await _connection.CloseAsync();
         }
 
-        public async Task UpdateLesson(Lesson lesson) {
+        public async Task UpdateLessonAsync(Lesson lesson) {
             var query = "UPDATE \"Lessons\" SET \"UserId\" = @UserId, \"Title\" = @Title, \"StartTime\" = @StartTime, \"EndTime\" = @EndTime " +
                 "WHERE \"Id\" = @Id";
 
@@ -121,13 +125,14 @@ namespace StudyingTelegramBot.Services {
             command.Parameters.AddWithValue("Title", lesson.Title);
             command.Parameters.AddWithValue("StartTime", lesson.StartTime);
             command.Parameters.AddWithValue("EndTime", lesson.EndTime);
+            command.Parameters.AddWithValue("DayOfWeek", Enum.GetName(typeof(DayOfWeek), lesson.DayOfWeek));
 
             await _connection.OpenAsync();
             await command.ExecuteNonQueryAsync();
             await _connection.CloseAsync();
         }
 
-        public async Task<bool> DeleteLesson(Guid id) {
+        public async Task<bool> DeleteLessonAsync(Guid id) {
             var query = "DELETE FROM \"Lessons\" WHERE \"Id\" = @Id";
 
             NpgsqlCommand command = new NpgsqlCommand(query, _connection);

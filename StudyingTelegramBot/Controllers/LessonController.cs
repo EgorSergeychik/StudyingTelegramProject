@@ -17,7 +17,7 @@ namespace StudyingTelegramBot.Controllers {
         [HttpGet]
         [Route("{id}")]
         public async Task<ActionResult<Lesson?>> GetLessonById(Guid id) {
-            var lesson = await _lessonService.GetLesson(id);
+            var lesson = await _lessonService.GetLessonByIdAsync(id);
 
             if (lesson == null) {
                 return NotFound();
@@ -28,7 +28,7 @@ namespace StudyingTelegramBot.Controllers {
 
         [HttpGet]
         public async Task<ActionResult<Lesson?>> GetLessonByUserId([FromQuery] Guid userId) {
-            var lessons = await _lessonService.GetLessonsByUserId(userId);
+            var lessons = await _lessonService.GetLessonsByUserIdAsync(userId);
 
             if (lessons == null) {
                 return NotFound();
@@ -39,7 +39,7 @@ namespace StudyingTelegramBot.Controllers {
 
         [HttpPost]
         public async Task<IActionResult> CreateLesson(Lesson lesson) {
-            await _lessonService.CreateLesson(lesson);
+            await _lessonService.CreateLessonAsync(lesson);
 
             return CreatedAtRoute(new { id = lesson.Id }, lesson);
         }
@@ -51,7 +51,7 @@ namespace StudyingTelegramBot.Controllers {
                 return BadRequest();
             }
 
-            await _lessonService.UpdateLesson(lesson);
+            await _lessonService.UpdateLessonAsync(lesson);
 
             return Ok(lesson);
         }
@@ -59,7 +59,7 @@ namespace StudyingTelegramBot.Controllers {
         [HttpDelete]
         [Route("{id}")]
         public async Task<IActionResult> DeleteLesson(Guid id) {
-            bool lessonDeleted = await _lessonService.DeleteLesson(id);
+            bool lessonDeleted = await _lessonService.DeleteLessonAsync(id);
 
             if (!lessonDeleted) {
                 return NotFound();
