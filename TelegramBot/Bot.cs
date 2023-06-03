@@ -12,6 +12,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Clients;
 using StudyingTelegramBot.Models;
 using System.Reflection;
+using MyUser = StudyingTelegramBot.Models.User;
 
 namespace TelegramBot {
     internal class Bot {
@@ -65,7 +66,7 @@ namespace TelegramBot {
         }
 
         private async Task HandleStartCommandAsync(ITelegramBotClient botClient, Message message) {
-            var user = new StudyingTelegramBot.Models.User {
+            var user = new MyUser {
                 Id = Guid.NewGuid(),
                 TelegramId = message.From.Id,
                 RemindStartLesson = false,
@@ -101,17 +102,25 @@ namespace TelegramBot {
             List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
 
             if (lessons == null) {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш розклад пустий.");
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш розклад __пустий__.", parseMode: ParseMode.MarkdownV2);
                 return;
             }
 
             var lessonsMessage = new StringBuilder();
-            lessonsMessage.AppendLine("Список занять:");
-            foreach (var lesson in lessons) {
-                lessonsMessage.AppendLine($"{lesson.Title} | {lesson.StartTime.TimeOfDay}-{lesson.EndTime.TimeOfDay}");
+            lessonsMessage.AppendLine("*__Ваш розклад:__*\n");
+            foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek))) {
+                var lessonsOfTheDay = lessons.FindAll(lesson => lesson.DayOfWeek == day);
+                lessonsMessage.AppendLine($"*\\- {day.ToString()}*");
+                byte lessonNumber = 1;
+                foreach (var lesson in lessonsOfTheDay) {
+                    var startTime = $"{lesson.StartTime.Hour}:{lesson.StartTime.Minute}";
+                    var endTime = $"{lesson.EndTime.Hour}:{lesson.EndTime.Minute}";
+                    lessonsMessage.AppendLine($"*\\[{lessonNumber}\\]* {lesson.Title} \\| _{startTime}_\\-_{endTime}_");
+                }
+                lessonsMessage.AppendLine();
             }
 
-            await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString());
+            await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString(), parseMode: ParseMode.MarkdownV2);
         }
     }
 }

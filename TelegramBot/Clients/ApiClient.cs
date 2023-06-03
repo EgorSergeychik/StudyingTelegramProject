@@ -87,6 +87,29 @@ namespace TelegramBot.Clients
             }
         }
 
+        public async Task<Guid?> CreateLessonAsync(Lesson lesson) {
+            try {
+                var lessonJson = JsonConvert.SerializeObject(lesson);
+                var content = new StringContent(lessonJson, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync($"/api/Lesson", content);
+                response.EnsureSuccessStatusCode();
+
+                var createdLessonJson = await response.Content.ReadAsStringAsync();
+                var createdLesson = JsonConvert.DeserializeObject<Lesson>(createdLessonJson);
+
+                return createdLesson.Id;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
         public async Task<List<Lesson>?> GetLessonsAsync(Guid userId) {
             try {
                 var response = await _httpClient.GetAsync($"api/Lesson?userId={userId}");
