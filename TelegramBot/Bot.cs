@@ -13,6 +13,7 @@ using TelegramBot.Clients;
 using StudyingTelegramBot.Models;
 using System.Reflection;
 using MyUser = StudyingTelegramBot.Models.User;
+using System.Globalization;
 
 namespace TelegramBot {
     internal class Bot {
@@ -35,8 +36,8 @@ namespace TelegramBot {
 
         private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken) {
             var errorMessage = exception switch {
-                ApiRequestException apiRequestException => $"Telegram API error:\n {apiRequestException.ErrorCode}" +
-                $"\n{apiRequestException.Message}",
+                ApiRequestException apiRequestException => $"[{apiRequestException.ErrorCode}] Telegram API error:\n" +
+                $"{apiRequestException.Message}",
                 _ => exception.ToString()
             };
 
@@ -52,12 +53,18 @@ namespace TelegramBot {
         }
 
         private async Task HandleMessageAsync(ITelegramBotClient botClient, Message message) {
-            switch (message.Text) {
+            string[] commandParts = message.Text.Split();
+            string command = commandParts[0].ToLower();
+
+            switch (command) {
                 case "/start":
                     await HandleStartCommandAsync(botClient, message);
                     break;
                 case "/help":
                     await HandleHelpCommandAsync(botClient, message);
+                    break;
+                case "/addlesson":
+                    await HandleAddLessonCommandAsync(botClient, message);
                     break;
                 case "/mylessons":
                     await HandleMyLessonsCommandAsync(botClient, message);
@@ -97,6 +104,53 @@ namespace TelegramBot {
             await botClient.SendTextMessageAsync(message.Chat.Id, helpMessage.ToString());
         }
 
+        private async Task HandleAddLessonCommandAsync(ITelegramBotClient botClient, Message message) {
+            string[] parameters = message.Text.Split();
+
+            if (parameters.Length != 5) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "/addlesson Назва_уроку Початок Кінець ДеньТижня");
+                return;
+            }
+
+            var lessonName = parameters[1].Replace("_", " ").Replace("*", "");
+            var startTimeStr = parameters[2];
+            var endTimeStr = parameters[3];
+            var dayOfWeekStr = parameters[4];
+
+            DateTime startTime, endTime;
+            string[] timeFormats = new string[] { "HH:mm", "H:m", "H:mm", "HH:m" };
+            bool tryParseStartTime = DateTime.TryParseExact(startTimeStr, timeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out startTime);
+            bool tryParseEndTime = DateTime.TryParseExact(endTimeStr, timeFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out endTime);
+            if (!tryParseStartTime || !tryParseEndTime) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Час потрібно вказувати у форматі Г:Х (наприклад, 16:40).");
+                return;
+            }
+
+            DayOfWeek dayOfWeek;
+            if (!Enum.TryParse(dayOfWeekStr, true, out dayOfWeek)) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "День тижня потрібно вказувати числом від 0 (неділя) до 6 (субота) або назву на англійській мові.");
+                return;
+            }
+
+            MyUser user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+
+            var lesson = new Lesson {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Title = lessonName,
+                StartTime = startTime,
+                EndTime = endTime,
+                DayOfWeek = dayOfWeek
+            };
+
+            await _apiClient.CreateLessonAsync(lesson);
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано урок *{lessonName}*\\!", parseMode: ParseMode.MarkdownV2);
+        }
+
         private async Task HandleMyLessonsCommandAsync(ITelegramBotClient botClient, Message message) {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
@@ -113,9 +167,11 @@ namespace TelegramBot {
                 lessonsMessage.AppendLine($"*\\- {day.ToString()}*");
                 byte lessonNumber = 1;
                 foreach (var lesson in lessonsOfTheDay) {
-                    var startTime = $"{lesson.StartTime.Hour}:{lesson.StartTime.Minute}";
-                    var endTime = $"{lesson.EndTime.Hour}:{lesson.EndTime.Minute}";
+                    var startTime = lesson.StartTime.ToLocalTime().ToString("HH:mm");
+                    var endTime = lesson.EndTime.ToLocalTime().ToString("HH:mm");
                     lessonsMessage.AppendLine($"*\\[{lessonNumber}\\]* {lesson.Title} \\| _{startTime}_\\-_{endTime}_");
+
+                    lessonNumber++;
                 }
                 lessonsMessage.AppendLine();
             }
