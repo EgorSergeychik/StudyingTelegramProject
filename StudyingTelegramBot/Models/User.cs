@@ -7,3 +7,4 @@
         public bool RemindCompleteHomework { get; set; }
     }
 }
+ 

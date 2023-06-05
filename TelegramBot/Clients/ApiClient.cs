@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
@@ -24,7 +25,7 @@ namespace TelegramBot.Clients
 
         public async Task<User?> GetUserAsync(Guid userId) {
             try {
-                var response = await _httpClient.GetAsync($"api/Users/{userId}");
+                var response = await _httpClient.GetAsync($"api/User/{userId}");
                 response.EnsureSuccessStatusCode();
 
                 var userJson = await response.Content.ReadAsStringAsync();
@@ -87,22 +88,20 @@ namespace TelegramBot.Clients
             }
         }
 
-        public async Task<Guid?> CreateLessonAsync(Lesson lesson) {
+        public async Task<Lesson?> GetLessonAsync(Guid lessonId) {
             try {
-                var lessonJson = JsonConvert.SerializeObject(lesson);
-                var content = new StringContent(lessonJson, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync($"/api/Lesson", content);
+                var response = await _httpClient.GetAsync($"api/Users/{lessonId}");
                 response.EnsureSuccessStatusCode();
 
-                var createdLessonJson = await response.Content.ReadAsStringAsync();
-                var createdLesson = JsonConvert.DeserializeObject<Lesson>(createdLessonJson);
+                var lessonJson = await response.Content.ReadAsStringAsync();
+                var lesson = JsonConvert.DeserializeObject<Lesson>(lessonJson);
 
-                return createdLesson.Id;
+                return lesson;
             } catch (HttpRequestException ex) {
                 Console.WriteLine($"HTTP Request exception: {ex.Message}");
                 return null;
             } catch (JsonException ex) {
-                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                Console.WriteLine($"Json Deserialize exception: {ex.Message}");
                 return null;
             } catch (Exception ex) {
                 Console.WriteLine($"Unknown exception: {ex.Message}");
@@ -128,6 +127,53 @@ namespace TelegramBot.Clients
             } catch (Exception ex) {
                 Console.WriteLine($"Unknown exception: {ex.Message} + {ex.InnerException}");
                 return null;
+            }
+        }
+
+        public async Task<Guid?> CreateLessonAsync(Lesson lesson) {
+            try {
+                var lessonJson = JsonConvert.SerializeObject(lesson);
+                var content = new StringContent(lessonJson, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync($"/api/Lesson", content);
+                response.EnsureSuccessStatusCode();
+
+                var createdLessonJson = await response.Content.ReadAsStringAsync();
+                var createdLesson = JsonConvert.DeserializeObject<Lesson>(createdLessonJson);
+
+                return createdLesson.Id;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<bool> DeleteLessonAsync(Guid lessonId) {
+            try {
+                var response = await _httpClient.DeleteAsync($"api/Lesson/{lessonId}");
+
+                if (response.StatusCode == HttpStatusCode.NoContent) {
+                    return true; 
+                } else if (response.StatusCode == HttpStatusCode.NotFound) {
+                    return false; 
+                }
+
+                 Console.WriteLine($"Unexpected status code: {response.StatusCode}");
+                 return false;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return false;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return false;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return false;
             }
         }
     }

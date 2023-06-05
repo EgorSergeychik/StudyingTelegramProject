@@ -36,7 +36,7 @@ namespace TelegramBot {
 
         private async Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken) {
             var errorMessage = exception switch {
-                ApiRequestException apiRequestException => $"[{apiRequestException.ErrorCode}] Telegram API error:\n" +
+                ApiRequestException apiRequestException => $"[{apiRequestException.ErrorCode}] Telegram API error: {exception.StackTrace}s\n" +
                 $"{apiRequestException.Message}",
                 _ => exception.ToString()
             };
@@ -48,6 +48,9 @@ namespace TelegramBot {
             switch (update?.Type) {
                 case UpdateType.Message:
                     await HandleMessageAsync(botClient, update?.Message);
+                    break;
+                case UpdateType.CallbackQuery:
+                    await HandleCallbackQueryAsync(botClient, update.CallbackQuery);
                     break;
             }
         }
@@ -69,7 +72,31 @@ namespace TelegramBot {
                 case "/mylessons":
                     await HandleMyLessonsCommandAsync(botClient, message);
                     break;
+                case "/rmlesson":
+                    await HandleRmLessonCommandAsync(botClient, message);
+                    break;
+
             }
+        }
+
+        private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery? callbackQuery) {
+            string[] callbackQueryParts = callbackQuery.Data.Split("_");
+            string callbackType = callbackQueryParts[0];
+            Console.WriteLine(callbackType);
+            
+            switch (callbackType) {
+                case "ActionCancel":
+                    await HandleActionCancelCallbackAsync(botClient, callbackQuery);
+                    break;
+                case "RemoveLesson":
+                    await HandleRmLessonCallbackAsync(botClient, callbackQuery);
+                    break;
+            }
+        }
+
+        private async Task HandleActionCancelCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
+            var emptyInlineKeyboard = new InlineKeyboardMarkup(new List<InlineKeyboardButton>());
+            await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Операцію відмінено.", true);
         }
 
         private async Task HandleStartCommandAsync(ITelegramBotClient botClient, Message message) {
@@ -156,7 +183,7 @@ namespace TelegramBot {
             List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
 
             if (lessons == null) {
-                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш розклад __пустий__.", parseMode: ParseMode.MarkdownV2);
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш розклад __пустий__\\.", parseMode: ParseMode.MarkdownV2);
                 return;
             }
 
@@ -178,5 +205,73 @@ namespace TelegramBot {
 
             await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString(), parseMode: ParseMode.MarkdownV2);
         }
+
+        private async Task HandleRmLessonCommandAsync(ITelegramBotClient botClient, Message message) {
+            string[] parameters = message.Text.Split();
+
+            if (parameters.Length != 3) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "/rmlesson ДеньТижня ПорядковийНомерУроку");
+                return;
+            }
+
+            var dayOfWeekStr = parameters[1];
+            var lessonNumStr = parameters[2];
+
+            DayOfWeek dayOfWeek;
+            bool tryParseDay = Enum.TryParse(dayOfWeekStr, out dayOfWeek);
+            if (!tryParseDay) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "День тижня потрібно вказувати у цифровому (0-6) або іменованому (на англійській мові) вигляді.");
+                return;
+            }
+
+            int lessonNum;
+            bool tryParseNum = int.TryParse(lessonNumStr, out lessonNum);
+            if (!tryParseNum) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Номер уроку має бути цифрою.");
+                return;
+            }
+
+            var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+            List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
+            lessons = lessons.Where(lesson => lesson.DayOfWeek == dayOfWeek).ToList();
+            if (lessonNum > lessons.Count || lessonNum < 1) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Некорректний номер уроку.");
+                return;
+            }
+
+            Lesson lesson = lessons[lessonNum - 1];
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+                new[] {
+                    InlineKeyboardButton.WithCallbackData("✔️ Так", $"RemoveLesson_{lesson.Id}"),
+                    InlineKeyboardButton.WithCallbackData("❌ Ні", $"ActionCancel")
+                });
+            await botClient.SendTextMessageAsync(message.Chat.Id, "Ви справді хочете видалити урок: " +
+                    $"*[{lessonNum}] {lesson.Title} \\({dayOfWeek}\\)*", parseMode: ParseMode.MarkdownV2, replyMarkup: inlineKeyboard);
+        }
+
+        private async Task HandleRmLessonCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
+            Guid lessonGuid = Guid.Parse(callbackQuery.Data.Split("_")[1]);
+            Lesson? lesson = await _apiClient.GetLessonAsync(lessonGuid);
+
+            bool isDeleted = await _apiClient.DeleteLessonAsync(lessonGuid);
+            if (!isDeleted) {
+                await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Помилка видалення.");
+                return;
+            }
+
+            await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок успішно видалено!", true);
+        }
+
+        private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false) {
+            if (removeInline)
+                await botClient.EditMessageReplyMarkupAsync(chatId, messageId);
+            await botClient.EditMessageTextAsync(chatId, messageId, newText);
+        }
     }
+
+
 }
