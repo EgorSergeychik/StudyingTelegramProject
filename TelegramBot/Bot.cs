@@ -15,6 +15,7 @@ using System.Reflection;
 using MyUser = StudyingTelegramBot.Models.User;
 using System.Globalization;
 using System.ComponentModel;
+using System.Text.RegularExpressions;
 
 namespace TelegramBot {
     internal class Bot {
@@ -77,7 +78,8 @@ namespace TelegramBot {
                     await HandleRmLessonCommandAsync(botClient, message);
                     break;
                 case "/addhw":
-
+                    await HandleAddHwCommandAsync(botClient, message);
+                    break;
                 case "/homework":
                     await HandleHomeworkCommandAsync(botClient, message);
                     break;
@@ -209,7 +211,7 @@ namespace TelegramBot {
             foreach (DayOfWeek day in Enum.GetValues(typeof(DayOfWeek))) {
                 var lessonsOfTheDay = lessons.FindAll(lesson => lesson.DayOfWeek == day);
                 lessonsMessage.AppendLine($"*\\- {day.ToString()}*");
-                byte lessonNumber = 1;
+                int lessonNumber = 1;
                 foreach (var lesson in lessonsOfTheDay) {
                     var startTime = lesson.StartTime.ToLocalTime().ToString("HH:mm");
                     var endTime = lesson.EndTime.ToLocalTime().ToString("HH:mm");
@@ -282,6 +284,55 @@ namespace TelegramBot {
             }
 
             await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок успішно видалено!", true);
+        }
+
+        [Description("<Назва_уроку> <ДатаЗдачі> \"<Опис>\" — додати домашнє завдання до існуючого уроку.")]
+        private async Task HandleAddHwCommandAsync(ITelegramBotClient botClient, Message message) {
+            string[] parameters = Regex.Split(message.Text, @" (?=(?:[^""]*""[^""]*"")*[^""]*$)");
+
+            if (parameters.Length != 4) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "/addhw <Назва_уроку> <ДатаЗдачі> \"<Опис>\"");
+                return;
+            }
+
+            string pattern = @"[*<>|\-.!()?]";
+            var lessonName = Regex.Replace(parameters[1], pattern, match => "\\" + match.Value).Replace("_", " ");
+            var dueDateStr = parameters[2];
+            var description = Regex.Replace(parameters[3], pattern, match => "\\" + match.Value).Replace("\"", "");
+
+            MyUser user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+
+            List<Lesson> lessonsList = await _apiClient.GetLessonsAsync(user.Id);
+            List<string> lessonsNames = lessonsList.Select(lesson => lesson.Title).ToList();
+            bool isLessonExists = lessonsNames.Contains(lessonName);
+            if (!isLessonExists) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Ви маєте написати назву існуючого (доданого до розкладу) уроку.");
+                return;
+            }
+
+            DateTime dueDate;
+            string[] dateFormats = new string[] { "dd.MM.yyyy", "dd/MM/yyyy" };
+            bool tryParseDueDate = DateTime.TryParseExact(dueDateStr, dateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out dueDate);
+            if (!tryParseDueDate) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Дату потрібно вказувати у форматі дд.ММ.рррр або дд/ММ/рррр (наприклад, 01.01.1970).");
+                return;
+            }
+
+            var homework = new Homework {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                Title = lessonName,
+                Description = description,
+                DueDate = dueDate,
+                IsCompleted = false
+            };
+
+            await _apiClient.CreateHomeworkAsync(homework);
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано завдання *\"{description}\"* до уроку *{lessonName}*\\!", parseMode: ParseMode.MarkdownV2);
         }
 
         [Description("— отримати список завдань.")]

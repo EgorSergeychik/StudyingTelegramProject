@@ -198,6 +198,29 @@ namespace TelegramBot.Clients
             }
         }
 
+        public async Task<Guid?> CreateHomeworkAsync(Homework homework) {
+            try {
+                var homeworkJson = JsonConvert.SerializeObject(homework);
+                var content = new StringContent(homeworkJson, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync($"/api/Homework", content);
+                response.EnsureSuccessStatusCode();
+
+                var createdHomeworkJson = await response.Content.ReadAsStringAsync();
+                var createdHomework = JsonConvert.DeserializeObject<Lesson>(createdHomeworkJson);
+
+                return createdHomework.Id;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
         public async Task<bool> DeleteHomeworkAsync(Guid homweorkId) {
             try {
                 var response = await _httpClient.DeleteAsync($"api/Homework/{homweorkId}");
