@@ -58,7 +58,7 @@ namespace StudyingTelegramBot.Controllers {
 
         [HttpDelete]
         [Route("{id}")]
-        public async Task<IActionResult> DeleteUserAsync(Guid id) {
+        public async Task<IActionResult> DeleteHomeworkAsync(Guid id) {
             bool homeworkDeleted = await _homeworkService.DeleteHomeworkAsync(id);
 
             if (!homeworkDeleted) {

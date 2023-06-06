@@ -94,6 +94,12 @@ namespace TelegramBot {
                 case "RemoveLesson":
                     await HandleRmLessonCallbackAsync(botClient, callbackQuery);
                     break;
+                case "ToggleCompletedHomework":
+                    await HandleToggleCompletedHomeworkCallbackAsync(botClient, callbackQuery);
+                    break;
+                case "RemoveCompletedHomework":
+                    await HandleRemoveCompletedHomeworkCallbackAsync(botClient, callbackQuery);
+                    break;
             }
         }
 
@@ -273,7 +279,7 @@ namespace TelegramBot {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
 
-            if (homeworkList == null) {
+            if (homeworkList == null || homeworkList.Count == 1) {
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш список домашніх завдань __пустий__\\.", parseMode: ParseMode.MarkdownV2);
                 return;
             }
@@ -290,11 +296,95 @@ namespace TelegramBot {
 
             InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
                 new[] {
-                    InlineKeyboardButton.WithCallbackData("✅ Виконані", "ToggleCompletedHomework"),
+                    InlineKeyboardButton.WithCallbackData("✅ Виконані: ВКЛ", "ToggleCompletedHomework_TurnOff"),
                     InlineKeyboardButton.WithCallbackData("🗑 Очистити виконані", "RemoveCompletedHomework")
                 });
 
-            await botClient.SendTextMessageAsync(message.Chat.Id, homeworkMessage.ToString(), parseMode: ParseMode.MarkdownV2);
+            await botClient.SendTextMessageAsync(message.Chat.Id, homeworkMessage.ToString(), parseMode: ParseMode.MarkdownV2, replyMarkup: inlineKeyboard);
+        }
+
+        private async Task HandleToggleCompletedHomeworkCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
+            var user = await _apiClient.GetUserByTelegramIdAsync(callbackQuery.From.Id);
+            List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            if (homeworkList == null || homeworkList.Count == 0)
+                return;
+
+            bool turnOffCompletedHomeworks = callbackQuery.Data == "ToggleCompletedHomework_TurnOff";
+
+            List<Homework> filteredHomeworkList = turnOffCompletedHomeworks
+                ? homeworkList.Where(h => !h.IsCompleted).ToList()
+                : homeworkList;
+
+            filteredHomeworkList.Sort((h1, h2) => h1.DueDate.CompareTo(h2.DueDate));
+
+            var homeworkMessage = new StringBuilder();
+            homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            foreach (Homework homework in filteredHomeworkList) {
+                var status = (homework.IsCompleted) ? "✅" : "❌";
+                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"\\- {homework.Description}");
+            }
+
+            string toggleButtonText;
+            string toggleCallbackData;
+
+            if (turnOffCompletedHomeworks) {
+                toggleButtonText = "❌ Виконані: ВИКЛ";
+                toggleCallbackData = "ToggleCompletedHomework_TurnOn";
+            } else {
+                toggleButtonText = "✅ Виконані: ВКЛ";
+                toggleCallbackData = "ToggleCompletedHomework_TurnOff";
+            }
+
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+                new[] {
+                    InlineKeyboardButton.WithCallbackData(toggleButtonText, toggleCallbackData),
+                    InlineKeyboardButton.WithCallbackData("🗑 Очистити виконані", "RemoveCompletedHomework")
+                });
+
+            await botClient.EditMessageTextAsync(
+                callbackQuery.Message.Chat.Id,
+                callbackQuery.Message.MessageId,
+                homeworkMessage.ToString(),
+                parseMode: ParseMode.MarkdownV2,
+                replyMarkup: inlineKeyboard);
+        }
+
+        private async Task HandleRemoveCompletedHomeworkCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
+            var user = await _apiClient.GetUserByTelegramIdAsync(callbackQuery.From.Id);
+            List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            if (homeworkList == null || homeworkList.Count == 0)
+                return;
+
+            List<Homework> homeworkListToDelete = homeworkList.Where(h => h.IsCompleted).ToList();
+            foreach (var homework in homeworkListToDelete) {
+                await _apiClient.DeleteHomeworkAsync(homework.Id);
+            }
+
+            homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            var homeworkMessage = new StringBuilder();
+            homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            foreach (Homework homework in homeworkList) {
+                var status = (homework.IsCompleted) ? "✅" : "❌";
+                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"\\- {homework.Description}");
+            }
+
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+                new[] {
+                    InlineKeyboardButton.WithCallbackData("✅ Виконані: ВКЛ", "ToggleCompletedHomework_TurnOff"),
+                    InlineKeyboardButton.WithCallbackData("🗑 Очистити виконані", "RemoveCompletedHomework")
+                });
+
+            await botClient.EditMessageTextAsync(
+                callbackQuery.Message.Chat.Id,
+                callbackQuery.Message.MessageId,
+                homeworkMessage.ToString(),
+                parseMode: ParseMode.MarkdownV2,
+                replyMarkup: inlineKeyboard);
         }
 
         private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false) {

@@ -197,5 +197,29 @@ namespace TelegramBot.Clients
                 return null;
             }
         }
+
+        public async Task<bool> DeleteHomeworkAsync(Guid homweorkId) {
+            try {
+                var response = await _httpClient.DeleteAsync($"api/Homework/{homweorkId}");
+
+                if (response.StatusCode == HttpStatusCode.NoContent) {
+                    return true;
+                } else if (response.StatusCode == HttpStatusCode.NotFound) {
+                    return false;
+                }
+
+                Console.WriteLine($"Unexpected status code: {response.StatusCode}");
+                return false;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return false;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return false;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return false;
+            }
+        }
     }
 }
