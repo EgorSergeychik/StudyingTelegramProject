@@ -85,7 +85,6 @@ namespace TelegramBot {
         private async Task HandleCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery? callbackQuery) {
             string[] callbackQueryParts = callbackQuery.Data.Split("_");
             string callbackType = callbackQueryParts[0];
-            Console.WriteLine(callbackType);
             
             switch (callbackType) {
                 case "ActionCancel":
@@ -279,7 +278,7 @@ namespace TelegramBot {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
 
-            if (homeworkList == null || homeworkList.Count == 1) {
+            if (homeworkList == null || homeworkList.Count == 0) {
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш список домашніх завдань __пустий__\\.", parseMode: ParseMode.MarkdownV2);
                 return;
             }
