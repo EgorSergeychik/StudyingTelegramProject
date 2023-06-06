@@ -14,6 +14,7 @@ using StudyingTelegramBot.Models;
 using System.Reflection;
 using MyUser = StudyingTelegramBot.Models.User;
 using System.Globalization;
+using System.ComponentModel;
 
 namespace TelegramBot {
     internal class Bot {
@@ -75,6 +76,8 @@ namespace TelegramBot {
                 case "/rmlesson":
                     await HandleRmLessonCommandAsync(botClient, message);
                     break;
+                case "/addhw":
+
                 case "/homework":
                     await HandleHomeworkCommandAsync(botClient, message);
                     break;
@@ -107,6 +110,7 @@ namespace TelegramBot {
             await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Операцію відмінено.", true);
         }
 
+        [Description("— отримати початкову загальну інформацію.")]
         private async Task HandleStartCommandAsync(ITelegramBotClient botClient, Message message) {
             var user = new MyUser {
                 Id = Guid.NewGuid(),
@@ -123,6 +127,7 @@ namespace TelegramBot {
                                                                   $"/help — список наявних команд.");
         }
 
+        [Description("— отримати список команд.")]
         private async Task HandleHelpCommandAsync(ITelegramBotClient botClient, Message message) {
             var commandMethods = GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Where(method => method.Name.StartsWith("Handle") && method.Name.EndsWith("CommandAsync"))
@@ -132,13 +137,16 @@ namespace TelegramBot {
             helpMessage.AppendLine("Список команд:");
 
             foreach (var method in commandMethods) {
+                DescriptionAttribute? attribute = (DescriptionAttribute)Attribute.GetCustomAttribute(method, typeof(DescriptionAttribute));
                 var commandName = method.Name.Replace("Handle", "").Replace("CommandAsync", "").ToLower();
-                helpMessage.AppendLine($"/{commandName}");
+                var commandDescription = (attribute != null) ? attribute.Description : "(опис відсутній)";
+                helpMessage.AppendLine($"/{commandName} {commandDescription}");
             }
 
             await botClient.SendTextMessageAsync(message.Chat.Id, helpMessage.ToString());
         }
 
+        [Description("<Назва_уроку> <Початок> <Кінець> <ДеньТижня> — додати урок до розкладу.")]
         private async Task HandleAddLessonCommandAsync(ITelegramBotClient botClient, Message message) {
             string[] parameters = message.Text.Split();
 
@@ -186,6 +194,7 @@ namespace TelegramBot {
             await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано урок *{lessonName}*\\!", parseMode: ParseMode.MarkdownV2);
         }
 
+        [Description("— отримати розклад.")]
         private async Task HandleLessonsCommandAsync(ITelegramBotClient botClient, Message message) {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
@@ -214,6 +223,7 @@ namespace TelegramBot {
             await botClient.SendTextMessageAsync(message.Chat.Id, lessonsMessage.ToString(), parseMode: ParseMode.MarkdownV2);
         }
 
+        [Description("<ДеньТижня> <ПорядковийНомерУроку> — видалити певний урок.")]
         private async Task HandleRmLessonCommandAsync(ITelegramBotClient botClient, Message message) {
             string[] parameters = message.Text.Split();
 
@@ -274,6 +284,7 @@ namespace TelegramBot {
             await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок успішно видалено!", true);
         }
 
+        [Description("— отримати список завдань.")]
         private async Task HandleHomeworkCommandAsync(ITelegramBotClient botClient, Message message) {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
