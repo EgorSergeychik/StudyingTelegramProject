@@ -69,11 +69,14 @@ namespace TelegramBot {
                 case "/addlesson":
                     await HandleAddLessonCommandAsync(botClient, message);
                     break;
-                case "/mylessons":
-                    await HandleMyLessonsCommandAsync(botClient, message);
+                case "/lessons":
+                    await HandleLessonsCommandAsync(botClient, message);
                     break;
                 case "/rmlesson":
                     await HandleRmLessonCommandAsync(botClient, message);
+                    break;
+                case "/homework":
+                    await HandleHomeworkCommandAsync(botClient, message);
                     break;
 
             }
@@ -178,7 +181,7 @@ namespace TelegramBot {
             await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано урок *{lessonName}*\\!", parseMode: ParseMode.MarkdownV2);
         }
 
-        private async Task HandleMyLessonsCommandAsync(ITelegramBotClient botClient, Message message) {
+        private async Task HandleLessonsCommandAsync(ITelegramBotClient botClient, Message message) {
             var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
             List<Lesson>? lessons = await _apiClient.GetLessonsAsync(user.Id);
 
@@ -264,6 +267,34 @@ namespace TelegramBot {
             }
 
             await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок успішно видалено!", true);
+        }
+
+        private async Task HandleHomeworkCommandAsync(ITelegramBotClient botClient, Message message) {
+            var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+            List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            if (homeworkList == null) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Ваш список домашніх завдань __пустий__\\.", parseMode: ParseMode.MarkdownV2);
+                return;
+            }
+
+            homeworkList.Sort((h1, h2) => h1.DueDate.CompareTo(h2.DueDate));
+
+            var homeworkMessage = new StringBuilder();
+            homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            foreach (Homework homework in homeworkList) {
+                var status = (homework.IsCompleted) ? "✅" : "❌";
+                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"\\- {homework.Description}");
+            }
+
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
+                new[] {
+                    InlineKeyboardButton.WithCallbackData("✅ Виконані", "ToggleCompletedHomework"),
+                    InlineKeyboardButton.WithCallbackData("🗑 Очистити виконані", "RemoveCompletedHomework")
+                });
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, homeworkMessage.ToString(), parseMode: ParseMode.MarkdownV2);
         }
 
         private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false) {

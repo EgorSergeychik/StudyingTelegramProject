@@ -26,6 +26,17 @@ namespace StudyingTelegramBot.Controllers {
             return Ok(homework);
         }
 
+        [HttpGet]
+        public async Task<ActionResult<Homework?>> GetHomeworkByUserId([FromQuery] Guid userId) {
+            var homework = await _homeworkService.GetHomeworkByUserIdAsync(userId);
+
+            if (homework == null) {
+                return NotFound();
+            }
+
+            return Ok(homework);
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateHomeworkAsync(Homework homework) {
             await _homeworkService.CreateHomeworkAsync(homework);

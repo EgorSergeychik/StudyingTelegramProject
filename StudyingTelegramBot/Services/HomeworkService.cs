@@ -66,6 +66,38 @@ namespace StudyingTelegramBot.Services {
             return homework;
         }
 
+        public async Task<List<Homework>?> GetHomeworkByUserIdAsync(Guid userId) {
+            var query = $"SELECT * FROM \"Homework\" WHERE \"UserId\" = @UserId";
+
+            NpgsqlCommand command = new NpgsqlCommand(query, _connection);
+            command.Parameters.AddWithValue("UserId", userId);
+
+            await _connection.OpenAsync();
+
+            NpgsqlDataReader reader = await command.ExecuteReaderAsync();
+            List<Homework> homeworkList = new List<Homework>();
+            while (await reader.ReadAsync()) {
+                Homework homework = new Homework {
+                    Id = reader.GetGuid(0),
+                    UserId = reader.GetGuid(1),
+                    Title = reader.GetString(2),
+                    Description = reader.GetString(3),
+                    DueDate = reader.GetDateTime(4),
+                    IsCompleted = reader.GetBoolean(5)
+                };
+                homeworkList.Add(homework);
+            }
+
+            await reader.CloseAsync();
+            await _connection.CloseAsync();
+
+            if (homeworkList.Count < 1)
+                return null;
+
+            return homeworkList;
+
+        }
+
         public async Task CreateHomeworkAsync(Homework homework) {
             var query = "INSERT INTO \"Homework\" (\"Id\", \"UserId\", \"Title\", \"Description\", \"DueDate\", \"IsCompleted\")"
                         + $"VALUES (@Id, @UserId, @Title, @Description, @DueDate, @IsCompleted)";

@@ -176,5 +176,26 @@ namespace TelegramBot.Clients
                 return false;
             }
         }
+
+        public async Task<List<Homework>?> GetHomeworksAsync(Guid userId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/Homework?userId={userId}");
+                response.EnsureSuccessStatusCode();
+
+                var homeworkJson = await response.Content.ReadAsStringAsync();
+                var homework = JsonConvert.DeserializeObject<List<Homework>>(homeworkJson);
+
+                return homework;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            }
+        }
     }
 }
