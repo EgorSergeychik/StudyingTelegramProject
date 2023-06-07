@@ -25,5 +25,19 @@ namespace StudyingTelegramAPI.Controllers {
 
             return Ok(groupsList);
         }
+
+        [HttpGet]
+        [Route("lessons")]
+        public async Task<ActionResult<List<Pair>>> GetKpiScheduleAsync([FromQuery] Guid groupId) {
+            var scheduleData = await _kpiService.GetKpiScheduleAsync(groupId);
+
+            if (scheduleData == null) {
+                return BadRequest();
+            }
+
+            var pairs = scheduleData.ScheduleFirstWeek.SelectMany(weekData => weekData.Pairs).ToList();
+
+            return Ok(pairs);
+        }
     }
 }

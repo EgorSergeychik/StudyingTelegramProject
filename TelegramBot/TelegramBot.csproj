@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\StudyingTelegramBot\StudyingTelegramAPI.csproj" />
+    <ProjectReference Include="..\StudyingTelegramBot\StudyingTelegramApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -35,5 +35,27 @@ namespace StudyingTelegramApi.Services {
                 return null;
             }
         }
+
+        public async Task<ScheduleData?> GetKpiScheduleAsync(Guid groupId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/schedule/lessons?groupId={groupId}");
+                response.EnsureSuccessStatusCode();
+
+                var scheduleJson = await response.Content.ReadAsStringAsync();
+                var scheduleResponse = JsonConvert.DeserializeObject<LessonsResponse>(scheduleJson);
+                var scheduleList = scheduleResponse?.Data;
+
+                return scheduleList;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message} {ex.InnerException}");
+                return null;
+            }
+        }
     }
 }
