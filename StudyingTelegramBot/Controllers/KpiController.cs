@@ -28,14 +28,14 @@ namespace StudyingTelegramAPI.Controllers {
 
         [HttpGet]
         [Route("lessons")]
-        public async Task<ActionResult<List<Pair>>> GetKpiScheduleAsync([FromQuery] Guid groupId) {
+        public async Task<ActionResult<List<WeekData>>> GetKpiScheduleAsync([FromQuery] Guid groupId) {
             var scheduleData = await _kpiService.GetKpiScheduleAsync(groupId);
 
             if (scheduleData == null) {
                 return BadRequest();
             }
 
-            var pairs = scheduleData.ScheduleFirstWeek.SelectMany(weekData => weekData.Pairs).ToList();
+            var pairs = scheduleData.ScheduleFirstWeek;
 
             return Ok(pairs);
         }

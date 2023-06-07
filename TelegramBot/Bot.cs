@@ -224,7 +224,51 @@ namespace TelegramBot {
                 return;
             }
 
-            Console.WriteLine("ok");
+            var pairs = await _apiClient.GetKpiLessonsAsync(group.Id);
+            var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+            var lessons = PairsToLessons(pairs, user.Id);
+
+            List<Guid?> lessonGuids = new List<Guid?>();
+            foreach (var lesson in lessons) {
+                Guid? id = await _apiClient.CreateLessonAsync(lesson);
+                if (id != default(Guid)) {
+                    lessonGuids.Add(id);
+                };
+            }
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано *{lessonGuids.Count}* уроків із КПІ\\-групи *{groupName.Replace("-", "")}*\\!", parseMode: ParseMode.MarkdownV2);
+        }
+
+        private List<Lesson> PairsToLessons(List<WeekData> pairs, Guid userId) {
+            List<Lesson> lessons = new List<Lesson>();
+
+            Dictionary<string, DayOfWeek> dayMappings = new Dictionary<string, DayOfWeek> {
+                { "Пн", DayOfWeek.Monday },
+                { "Вв", DayOfWeek.Tuesday },
+                { "Ср", DayOfWeek.Wednesday },
+                { "Чт", DayOfWeek.Thursday },
+                { "Пт", DayOfWeek.Friday },
+                { "Сб", DayOfWeek.Saturday },
+            };
+
+            foreach (var weekdata in pairs) {
+                if (dayMappings.TryGetValue(weekdata.Day, out DayOfWeek dayOfWeek)) {
+                    foreach (var pair in weekdata.Pairs) {
+                        var lesson = new Lesson {
+                            Id = Guid.NewGuid(),
+                            UserId = userId,
+                            Title = pair.Name,
+                            StartTime = DateTime.ParseExact(pair.Time, "H.mm", CultureInfo.InvariantCulture, DateTimeStyles.None),
+                            EndTime = DateTime.ParseExact(pair.Time, "H.mm", CultureInfo.InvariantCulture, DateTimeStyles.None).AddHours(1.5),
+                            DayOfWeek = dayOfWeek
+                        };
+
+                        lessons.Add(lesson);
+                    }
+                }
+            }
+
+            return lessons;
         }
 
         [Description("— отримати розклад.")]
@@ -244,9 +288,10 @@ namespace TelegramBot {
                 lessonsMessage.AppendLine($"*\\- {day.ToString()}*");
                 int lessonNumber = 1;
                 foreach (var lesson in lessonsOfTheDay) {
+                    var lessonName = lesson.Title.Replace(".", "\\.");
                     var startTime = lesson.StartTime.ToLocalTime().ToString("HH:mm");
                     var endTime = lesson.EndTime.ToLocalTime().ToString("HH:mm");
-                    lessonsMessage.AppendLine($"*\\[{lessonNumber}\\]* {lesson.Title} \\| _{startTime}_\\-_{endTime}_");
+                    lessonsMessage.AppendLine($"*\\[{lessonNumber}\\]* _{startTime}_\\-_{endTime}_ \\| {lessonName} ");
 
                     lessonNumber++;
                 }

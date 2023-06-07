@@ -309,5 +309,26 @@ namespace TelegramBot.Clients
                 return null;
             }
         }
+
+        public async Task<List<WeekData>?> GetKpiLessonsAsync(Guid groupId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/Kpi/lessons?groupId={groupId}");
+                response.EnsureSuccessStatusCode();
+
+                var pairsJson = await response.Content.ReadAsStringAsync();
+                var pairs = JsonConvert.DeserializeObject<List<WeekData>>(pairsJson);
+
+                return pairs;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            }
+        }
     }
 }
