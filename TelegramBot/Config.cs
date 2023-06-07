@@ -19,5 +19,9 @@ namespace TelegramBot {
         public static string ApiAdress {
             get => configuration["ApiAdress"];
         }
+
+        public static string KpiApiAdress {
+            get => configuration["KpiApiAdress"];
+        }
     }
 }

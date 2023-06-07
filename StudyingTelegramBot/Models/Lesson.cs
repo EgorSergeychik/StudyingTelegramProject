@@ -1,4 +1,4 @@
-﻿namespace StudyingTelegramBot.Models {
+﻿namespace StudyingTelegramApi.Models {
     public class Lesson {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }

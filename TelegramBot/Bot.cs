@@ -10,9 +10,9 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Clients;
-using StudyingTelegramBot.Models;
+using StudyingTelegramApi.Models;
 using System.Reflection;
-using MyUser = StudyingTelegramBot.Models.User;
+using MyUser = StudyingTelegramApi.Models.User;
 using System.Globalization;
 using System.ComponentModel;
 using System.Text.RegularExpressions;
@@ -469,6 +469,8 @@ namespace TelegramBot {
                 parseMode: ParseMode.MarkdownV2,
                 replyMarkup: inlineKeyboard);
         }
+
+        [Description("— помітити певне завдання як виконане.")]
         private async Task HandleCompleteCommandAsync(ITelegramBotClient botClient, Message message) {
             await HandleHomeworkCommandAsync(botClient, message);
 

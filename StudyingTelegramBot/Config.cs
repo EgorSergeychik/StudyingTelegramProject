@@ -1,15 +1,16 @@
-﻿namespace StudyingTelegramBot {
+﻿namespace StudyingTelegramApi {
     public static class Config {
-        public static string? DefaultConnection {
-            get {
-                IConfigurationRoot configuration = new ConfigurationBuilder()
+        private static IConfigurationRoot configuration = new ConfigurationBuilder()
                     .SetBasePath(AppContext.BaseDirectory)
                     .AddJsonFile("appsettings.json")
                     .Build();
 
-                return configuration.GetConnectionString("DefaultConnection");
-            }
+        public static string? DefaultConnection {
+            get => configuration.GetConnectionString("DefaultConnection");
+        }
+
+        public static string? KpiApiAdress {
+            get => configuration.GetConnectionString("KpiApiAdress");
         }
     }
-    // TODO: rewrite config system
 }

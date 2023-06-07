@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using StudyingTelegramBot.Services;
-using StudyingTelegramBot.Models;
+using StudyingTelegramApi.Services;
+using StudyingTelegramApi.Models;
 
-namespace StudyingTelegramBot.Controllers {
+namespace StudyingTelegramApi.Controllers {
     [ApiController]
     [Route("api/[controller]")]
     public class LessonController : ControllerBase {

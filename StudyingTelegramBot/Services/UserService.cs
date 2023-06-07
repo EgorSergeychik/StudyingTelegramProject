@@ -1,7 +1,7 @@
-﻿using StudyingTelegramBot.Models;
+﻿using StudyingTelegramApi.Models;
 using Npgsql;
 
-namespace StudyingTelegramBot.Services {
+namespace StudyingTelegramApi.Services {
     public class UserService {
         private readonly NpgsqlConnection _connection;
 

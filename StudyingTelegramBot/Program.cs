@@ -1,4 +1,4 @@
-using StudyingTelegramBot.Services;
+using StudyingTelegramApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

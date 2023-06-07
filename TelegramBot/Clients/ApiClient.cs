@@ -6,20 +6,20 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Newtonsoft.Json;
-using StudyingTelegramBot.Models;
+using StudyingTelegramApi.Models;
 
 namespace TelegramBot.Clients
 {
     internal class ApiClient
     {
-        private string _baseURl;
+        private string _baseUrl;
         private HttpClient _httpClient;
 
         public ApiClient()
         {
-            _baseURl = Config.ApiAdress;
+            _baseUrl = Config.ApiAdress;
             _httpClient = new HttpClient();
-            _httpClient.BaseAddress = new Uri(_baseURl);
+            _httpClient.BaseAddress = new Uri(_baseUrl);
 
         }
 
