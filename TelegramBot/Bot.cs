@@ -427,10 +427,10 @@ namespace TelegramBot {
         private async Task HandleRemoveCompletedHomeworkCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
             var user = await _apiClient.GetUserByTelegramIdAsync(callbackQuery.From.Id);
             List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
-            List<Homework> homeworkListToDelete = homeworkList.Where(h => h.IsCompleted).ToList();
-
             if (homeworkList == null || homeworkList.Count == 0)
                 return;
+
+            List<Homework>? homeworkListToDelete = homeworkList.Where(h => h.IsCompleted).ToList();
             if (homeworkListToDelete == null || homeworkListToDelete.Count == 0)
                 return;
 
@@ -439,6 +439,11 @@ namespace TelegramBot {
             }
 
             homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            if (homeworkList == null || homeworkList.Count == 0) {
+                await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Ваш список домашніх завдань __пустий__\\.", true, ParseMode.MarkdownV2);
+                return;
+            }
 
             var homeworkMessage = new StringBuilder();
             homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
@@ -478,6 +483,10 @@ namespace TelegramBot {
             var inlineKeyboardButtons = new List<InlineKeyboardButton>();
             int homeworkNum = 1;
             foreach (var homework in homeworkList) {
+                if (homework.IsCompleted) {
+                    homeworkNum++;
+                    continue;
+                }
                 var button = InlineKeyboardButton.WithCallbackData(homeworkNum.ToString(), $"MarkCompleted_{homework.Id}");
                 inlineKeyboardButtons.Add(button);
 
@@ -486,7 +495,8 @@ namespace TelegramBot {
 
             InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(inlineKeyboardButtons);
 
-            await botClient.SendTextMessageAsync(message.Chat.Id, "Виберіть завдання, щоб помітити його, як виконане:", parseMode: ParseMode.MarkdownV2, replyMarkup: inlineKeyboard);
+            var messageText = (inlineKeyboardButtons.Count > 0) ? "Виберіть завдання, щоб помітити його, як виконане:" : "У вас відсутні невиконані завдання\\.";
+            await botClient.SendTextMessageAsync(message.Chat.Id, messageText, parseMode: ParseMode.MarkdownV2, replyMarkup: inlineKeyboard);
         }
 
         private async Task HandleMarkCompletedCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
@@ -497,14 +507,14 @@ namespace TelegramBot {
 
             await _apiClient.UpdateHomeworkAsync(homeworkGuid, homework);
 
-            await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок помічено як виконаний!", true);
+            await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Завдання помічено як виконане!", true);
         }
 
 
-        private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false) {
+        private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false, ParseMode? parseMode = null) {
             if (removeInline)
                 await botClient.EditMessageReplyMarkupAsync(chatId, messageId);
-            await botClient.EditMessageTextAsync(chatId, messageId, newText);
+            await botClient.EditMessageTextAsync(chatId, messageId, newText, parseMode: parseMode);
         }
     }
 
