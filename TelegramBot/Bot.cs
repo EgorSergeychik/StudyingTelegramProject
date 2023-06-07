@@ -83,6 +83,9 @@ namespace TelegramBot {
                 case "/homework":
                     await HandleHomeworkCommandAsync(botClient, message);
                     break;
+                case "/complete":
+                    await HandleCompleteCommandAsync(botClient, message);
+                    break;
 
             }
         }
@@ -103,6 +106,9 @@ namespace TelegramBot {
                     break;
                 case "RemoveCompletedHomework":
                     await HandleRemoveCompletedHomeworkCallbackAsync(botClient, callbackQuery);
+                    break;
+                case "MarkCompleted":
+                    await HandleMarkCompletedCallbackQueryAsync(botClient, callbackQuery);
                     break;
             }
         }
@@ -349,10 +355,13 @@ namespace TelegramBot {
 
             var homeworkMessage = new StringBuilder();
             homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            int homeworkNum = 1;
             foreach (Homework homework in homeworkList) {
                 var status = (homework.IsCompleted) ? "✅" : "❌";
-                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"*\\[{homeworkNum}\\]* {status} __{homework.DueDate.ToString("dd/MM/yyyy")}__ \\| *{homework.Title}*");
                 homeworkMessage.AppendLine($"\\- {homework.Description}");
+
+                homeworkNum++;
             }
 
             InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
@@ -381,10 +390,13 @@ namespace TelegramBot {
 
             var homeworkMessage = new StringBuilder();
             homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            int homeworkNum = 1;
             foreach (Homework homework in filteredHomeworkList) {
                 var status = (homework.IsCompleted) ? "✅" : "❌";
-                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"*\\[{homeworkNum}\\]* {status} __{homework.DueDate.ToString("dd/MM/yyyy")}__ \\| *{homework.Title}*");
                 homeworkMessage.AppendLine($"\\- {homework.Description}");
+
+                homeworkNum++;
             }
 
             string toggleButtonText;
@@ -415,11 +427,13 @@ namespace TelegramBot {
         private async Task HandleRemoveCompletedHomeworkCallbackAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
             var user = await _apiClient.GetUserByTelegramIdAsync(callbackQuery.From.Id);
             List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+            List<Homework> homeworkListToDelete = homeworkList.Where(h => h.IsCompleted).ToList();
 
             if (homeworkList == null || homeworkList.Count == 0)
                 return;
+            if (homeworkListToDelete == null || homeworkListToDelete.Count == 0)
+                return;
 
-            List<Homework> homeworkListToDelete = homeworkList.Where(h => h.IsCompleted).ToList();
             foreach (var homework in homeworkListToDelete) {
                 await _apiClient.DeleteHomeworkAsync(homework.Id);
             }
@@ -428,10 +442,13 @@ namespace TelegramBot {
 
             var homeworkMessage = new StringBuilder();
             homeworkMessage.AppendLine("*__Ваші домашні завдання:__*\n");
+            int homeworkNum = 1;
             foreach (Homework homework in homeworkList) {
                 var status = (homework.IsCompleted) ? "✅" : "❌";
-                homeworkMessage.AppendLine($"{status} __\\[{homework.DueDate.ToString("dd/MM/yyyy")}\\]__ *{homework.Title}*");
+                homeworkMessage.AppendLine($"*\\[{homeworkNum}\\]* {status} __{homework.DueDate.ToString("dd/MM/yyyy")}__ \\| *{homework.Title}*");
                 homeworkMessage.AppendLine($"\\- {homework.Description}");
+
+                homeworkNum++;
             }
 
             InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(
@@ -447,6 +464,42 @@ namespace TelegramBot {
                 parseMode: ParseMode.MarkdownV2,
                 replyMarkup: inlineKeyboard);
         }
+        private async Task HandleCompleteCommandAsync(ITelegramBotClient botClient, Message message) {
+            await HandleHomeworkCommandAsync(botClient, message);
+
+            var user = await _apiClient.GetUserByTelegramIdAsync(message.From.Id);
+            List<Homework>? homeworkList = await _apiClient.GetHomeworksAsync(user.Id);
+
+            if (homeworkList == null || homeworkList.Count == 0)
+                return;
+
+            homeworkList.Sort((h1, h2) => h1.DueDate.CompareTo(h2.DueDate));
+
+            var inlineKeyboardButtons = new List<InlineKeyboardButton>();
+            int homeworkNum = 1;
+            foreach (var homework in homeworkList) {
+                var button = InlineKeyboardButton.WithCallbackData(homeworkNum.ToString(), $"MarkCompleted_{homework.Id}");
+                inlineKeyboardButtons.Add(button);
+
+                homeworkNum++;
+            }
+
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup(inlineKeyboardButtons);
+
+            await botClient.SendTextMessageAsync(message.Chat.Id, "Виберіть завдання, щоб помітити його, як виконане:", parseMode: ParseMode.MarkdownV2, replyMarkup: inlineKeyboard);
+        }
+
+        private async Task HandleMarkCompletedCallbackQueryAsync(ITelegramBotClient botClient, CallbackQuery callbackQuery) {
+            Guid homeworkGuid = Guid.Parse(callbackQuery.Data.Split("_")[1]);
+            Homework? homework = await _apiClient.GetHomeworkAsync(homeworkGuid);
+
+            homework.IsCompleted = true;
+
+            await _apiClient.UpdateHomeworkAsync(homeworkGuid, homework);
+
+            await ChangeMessageTextAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId, "Урок помічено як виконаний!", true);
+        }
+
 
         private async Task ChangeMessageTextAsync(ChatId chatId, int messageId, string newText, bool removeInline = false) {
             if (removeInline)

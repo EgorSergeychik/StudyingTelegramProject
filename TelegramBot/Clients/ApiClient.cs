@@ -90,7 +90,7 @@ namespace TelegramBot.Clients
 
         public async Task<Lesson?> GetLessonAsync(Guid lessonId) {
             try {
-                var response = await _httpClient.GetAsync($"api/Users/{lessonId}");
+                var response = await _httpClient.GetAsync($"api/Lesson/{lessonId}");
                 response.EnsureSuccessStatusCode();
 
                 var lessonJson = await response.Content.ReadAsStringAsync();
@@ -177,6 +177,27 @@ namespace TelegramBot.Clients
             }
         }
 
+        public async Task<Homework?> GetHomeworkAsync(Guid homeworkId) {
+            try {
+                var response = await _httpClient.GetAsync($"api/Homework/{homeworkId}");
+                response.EnsureSuccessStatusCode();
+
+                var homeworkJson = await response.Content.ReadAsStringAsync();
+                var homework = JsonConvert.DeserializeObject<Homework>(homeworkJson);
+
+                return homework;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
         public async Task<List<Homework>?> GetHomeworksAsync(Guid userId) {
             try {
                 var response = await _httpClient.GetAsync($"api/Homework?userId={userId}");
@@ -206,9 +227,32 @@ namespace TelegramBot.Clients
                 response.EnsureSuccessStatusCode();
 
                 var createdHomeworkJson = await response.Content.ReadAsStringAsync();
-                var createdHomework = JsonConvert.DeserializeObject<Lesson>(createdHomeworkJson);
+                var createdHomework = JsonConvert.DeserializeObject<Homework>(createdHomeworkJson);
 
                 return createdHomework.Id;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Serialize exception: {ex.Message}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<Guid?> UpdateHomeworkAsync(Guid homeworkId, Homework homework) {
+            try {
+                var homeworkJson = JsonConvert.SerializeObject(homework);
+                var content = new StringContent(homeworkJson, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PutAsync($"/api/Homework/{homeworkId}", content);
+                response.EnsureSuccessStatusCode();
+
+                var updatedHomeworkJson = await response.Content.ReadAsStringAsync();
+                var updatedHomework = JsonConvert.DeserializeObject<Homework>(updatedHomeworkJson);
+
+                return updatedHomework.Id;
             } catch (HttpRequestException ex) {
                 Console.WriteLine($"HTTP Request exception: {ex.Message}");
                 return null;
