@@ -10,7 +10,7 @@
         }
 
         public static string? KpiApiAdress {
-            get => configuration.GetConnectionString("KpiApiAdress");
+            get => configuration["KpiApiAdress"];
         }
     }
 }

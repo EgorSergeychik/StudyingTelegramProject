@@ -11,6 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<LessonService>();
 builder.Services.AddScoped<HomeworkService>();
+builder.Services.AddScoped<KpiService>();
 
 var app = builder.Build();
 
