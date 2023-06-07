@@ -288,5 +288,26 @@ namespace TelegramBot.Clients
                 return false;
             }
         }
+
+        public async Task<List<Group>?> GetKpiGroupsAsync() {
+            try {
+                var response = await _httpClient.GetAsync($"api/Kpi/groups");
+                response.EnsureSuccessStatusCode();
+
+                var groupsJson = await response.Content.ReadAsStringAsync();
+                var groups = JsonConvert.DeserializeObject<List<Group>>(groupsJson);
+
+                return groups;
+            } catch (HttpRequestException ex) {
+                Console.WriteLine($"HTTP Request exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (JsonException ex) {
+                Console.WriteLine($"Json Deserialize exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            } catch (Exception ex) {
+                Console.WriteLine($"Unknown exception: {ex.Message} + {ex.InnerException}");
+                return null;
+            }
+        }
     }
 }

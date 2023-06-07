@@ -86,7 +86,9 @@ namespace TelegramBot {
                 case "/complete":
                     await HandleCompleteCommandAsync(botClient, message);
                     break;
-
+                case "/kpi":
+                    await HandleKpiCommandAsync(botClient, message);
+                    break;
             }
         }
 
@@ -160,7 +162,7 @@ namespace TelegramBot {
 
             if (parameters.Length != 5) {
                 await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
-                    "/addlesson Назва_уроку Початок Кінець ДеньТижня");
+                    "/addlesson <Назва_уроку> <Початок> <Кінець> <ДеньТижня>");
                 return;
             }
 
@@ -200,6 +202,29 @@ namespace TelegramBot {
             await _apiClient.CreateLessonAsync(lesson);
 
             await botClient.SendTextMessageAsync(message.Chat.Id, $"Успішно додано урок *{lessonName}*\\!", parseMode: ParseMode.MarkdownV2);
+        }
+
+        private async Task HandleKpiCommandAsync(ITelegramBotClient botClient, Message message) {
+            string[] parameters = message.Text.Split();
+
+            if (parameters.Length != 2) {
+                var groupsMessage = new StringBuilder();
+                groupsMessage.AppendLine("Щоб зберегти розклад по групі КПІ\\, використайте: \\/kpi \\<Назва групи\\>");
+
+                await botClient.SendTextMessageAsync(message.Chat.Id, groupsMessage.ToString(), parseMode: ParseMode.MarkdownV2);
+                return;
+            }
+
+            var groupsList = await _apiClient.GetKpiGroupsAsync();
+            var groupName = parameters[1];
+            var group = groupsList.FirstOrDefault(group => group.Name == groupName);
+            if (group == null) {
+                await botClient.SendTextMessageAsync(message.Chat.Id, "Неправильний формат.\n" +
+                    "Група не знайдена. Перевірте правильність назви.");
+                return;
+            }
+
+            Console.WriteLine("ok");
         }
 
         [Description("— отримати розклад.")]
